@@ -2,14 +2,12 @@ const User = require('../models/User');
 const mailer = require('../utils/mailer');
 const bcrypt = require('bcryptjs');
 
-// 1. Register User
 exports.register = async (req, res) => {
   try {
     const { name, email, phone, password, confirmPassword, profileImage } = req.body;
 
     if (password !== confirmPassword) return res.status(400).json({ message: "Passwords match fail" });
 
-    // Check uniqueness
     const check = await User.findOne({ $or: [{ email }, { phone }] });
     if (check) return res.status(400).json({ message: "Email or Phone already exists" });
 
@@ -20,7 +18,6 @@ exports.register = async (req, res) => {
   }
 };
 
-// 2. View User By ID
 exports.viewUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password -resetOtp -resetOtpExpires');
@@ -31,15 +28,13 @@ exports.viewUser = async (req, res) => {
   }
 };
 
-// 3. Update Profile
 exports.updateProfile = async (req, res) => {
   try {
     const { name, phone, profileImage, email } = req.body;
     const userId = req.params.id;
 
-    // 1. Check if another user already uses this email or phone
     const duplicateCheck = await User.findOne({
-      _id: { $ne: userId }, // Exclude the current user
+      _id: { $ne: userId }, 
       $or: [{ email }, { phone }]
     });
 
@@ -48,7 +43,6 @@ exports.updateProfile = async (req, res) => {
       return res.status(400).json({ message: `${field} is already in use by another account.` });
     }
 
-    // 2. Proceed with update
     const user = await User.findByIdAndUpdate(
       userId, 
       { name, phone, profileImage, email }, 
@@ -63,7 +57,6 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// 4. Forgot Password (Send OTP)
 exports.forgotPassword = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
@@ -71,7 +64,7 @@ exports.forgotPassword = async (req, res) => {
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     user.resetOtp = otp;
-    user.resetOtpExpires = Date.now() + 10 * 60 * 1000; // 10 mins
+    user.resetOtpExpires = Date.now() + 10 * 60 * 1000;
     await user.save();
 
     await mailer.sendOtpEmail(user.email, otp);
